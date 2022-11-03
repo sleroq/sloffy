@@ -1,0 +1,2 @@
+* Sloffy
+Simple [[https://misskey.io/][Misskey]] bot to automatically post images from pixiv
