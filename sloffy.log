@@ -1,0 +1,4 @@
+2022/11/03 11:07:50 main.go:48: Getting env: Post "https://https//quietplace.xyz//api/admin/meta": dial tcp: lookup https: no such host
+2022/11/03 15:43:40 main.go:48: Getting env: [Notes] Error happened: 404 - Not found: /notes/create
+2022/11/03 15:45:23 main.go:48: doing something: [Notes] Error happened: 404 - Not found: /notes/create
+2022/11/03 15:46:53 main.go:48: doing something: Creating note: 404 - Not found: /notes/create
