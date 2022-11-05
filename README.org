@@ -1,6 +1,8 @@
 * Sloffy
 Simple [[https://misskey.io/][Misskey]] bot to automatically post images from pixiv
 
+This project is not ready yet, feel free to open issue or contact me via quetplace.xyz or telegram
+
 * Usage
 1. Clone repository
     #+begin_src bash
