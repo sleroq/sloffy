@@ -1,2 +1,22 @@
 * Sloffy
 Simple [[https://misskey.io/][Misskey]] bot to automatically post images from pixiv
+
+* Usage
+1. Clone repository
+    #+begin_src bash
+    git clone https://github.com/sleroq/sloffy.git
+    #+end_src
+
+2. [[https://gist.github.com/upbit/6edda27cb1644e94183291109b8a5fde][Get auth data for pixiv]]
+
+3. Set up the environment variables
+   #+begin_src bash
+   cp ./scripts/env.sh.example ./scripts/env.sh
+
+   $EDITOR ./script/env.sh
+   #+end_src
+
+4. Start
+   #+begin_src bash
+   scripts/run.sh
+   #+end_src
