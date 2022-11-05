@@ -181,15 +181,25 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 		for _, bookmark := range newBookmarks {
 			oldBookmarks = append(oldBookmarks, bookmark.ID)
 		}
+	}
 
-		err = saveBookmarks(newBookmarks)
-		if err != nil {
-			return fmt.Errorf("saving bookmarks list for the first time: %w", err)
+	var someNewBookmarks []pixiv.Illust
+	for index, illust := range newBookmarks {
+		fmt.Println("orig", illust.Images.Original)
+		fmt.Println("large", illust.Images.Large)
+		fmt.Println("med", illust.Images.Medium)
+		fmt.Println("Square", illust.Images.SquareMedium)
+		fmt.Println("MetaSingle", illust.MetaSinglePage.OriginalImageURL)
+		fmt.Println("MetaPages", len(illust.MetaPages))
+		fmt.Println("--------------")
+		someNewBookmarks = append(someNewBookmarks, illust)
+		if index > 20 {
+			break
 		}
 	}
 
 	var actuallyNew []pixiv.Illust
-	for _, bookmark := range newBookmarks {
+	for _, bookmark := range someNewBookmarks {
 		if !slices.Contains(oldBookmarks, bookmark.ID) {
 			actuallyNew = append(actuallyNew, bookmark)
 		}
@@ -197,59 +207,65 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 
 	if len(actuallyNew) > 0 {
 		log.Println("Found", len(actuallyNew), "new bookmarks")
+	}
 
-		for _, illust := range actuallyNew {
-			illustID := strconv.FormatUint(illust.ID, 10)
+	for _, illust := range actuallyNew {
+		illustID := strconv.FormatUint(illust.ID, 10)
 
-			var urls []string
-			if illust.MetaSinglePage.OriginalImageURL == "" {
-				for _, img := range illust.MetaPages {
-					urls = append(urls, img.Images.Medium)
-				}
-			} else {
-				urls = append(urls, illust.MetaSinglePage.OriginalImageURL)
+		var urls []string
+		if illust.MetaSinglePage.OriginalImageURL == "" {
+			for _, img := range illust.MetaPages {
+				urls = append(urls, img.Images.Medium)
+			}
+		} else {
+			urls = append(urls, illust.Images.Medium)
+		}
+
+		noteText := fmt.Sprintf("[%s](https://www.pixiv.net/en/artworks/%s)\n#art #pixiv", illust.Title, illustID)
+		var uploadedFiles []string
+
+		httpClient := &http.Client{}
+		for index, u := range urls {
+			image, err := downloadFromPixiv(httpClient, u)
+			if err != nil {
+				return fmt.Errorf("downloading image %s: %w", u, err)
 			}
 
-			noteText := fmt.Sprintf("[%s](https://www.pixiv.net/en/artworks/%s)\n#art #pixiv", illust.Title, illustID)
-			var uploadedFiles []string
-
-			httpClient := &http.Client{}
-			for _, u := range urls {
-				image, err := downloadFromPixiv(httpClient, u)
-				if err != nil {
-					return fmt.Errorf("downloading image %s: %w", u, err)
-				}
-
-				file, err := misskeyClient.Drive().File().Create(files.CreateRequest{
-					FolderID:    "977okw2d1d", // FIXME
-					Name:        filepath.Base(u),
-					IsSensitive: false, // FIXME: Get this from pixiv api
-					Content:     image,
-				})
-				if err != nil {
-					return fmt.Errorf("saving file ro misskey drive: %w", err)
-				}
-
-				uploadedFiles = append(uploadedFiles, file.ID)
-			}
-
-			response, err := misskeyClient.Notes().Create(notes.CreateRequest{
-				Visibility: models.VisibilityPublic,
-				Text:       &noteText,
-				FileIDs:    uploadedFiles,
+			file, err := misskeyClient.Drive().File().Create(files.CreateRequest{
+				FolderID:    "977okw2d1d", // FIXME
+				Name:        filepath.Base(u),
+				IsSensitive: false, // FIXME: Get this from pixiv api
+				Content:     image,
 			})
 			if err != nil {
-				return fmt.Errorf("Creating note: %s", err)
+				return fmt.Errorf("saving file ro misskey drive: %w", err)
 			}
 
-			log.Println("note for", illustID, "created with id", response.CreatedNote.ID)
+			uploadedFiles = append(uploadedFiles, file.ID)
+
+			if index > 14 {
+				log.Println("WARN: Misskey attachments limt is reached ;c")
+				break
+			}
 		}
 
-		err = saveBookmarks(newBookmarks)
+		response, err := misskeyClient.Notes().Create(notes.CreateRequest{
+			Visibility: models.VisibilityPublic,
+			Text:       &noteText,
+			FileIDs:    uploadedFiles,
+		})
 		if err != nil {
-			return fmt.Errorf("saving bookmarks list: %w", err)
+			return fmt.Errorf("Creating note: %s", err)
 		}
+
+		log.Println("note for", illustID, "created with id", response.CreatedNote.ID)
 	}
+
+	err = saveBookmarks(newBookmarks)
+	if err != nil {
+		return fmt.Errorf("saving bookmarks list: %w", err)
+	}
+
 	return nil
 }
 
