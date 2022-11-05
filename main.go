@@ -19,7 +19,6 @@ import (
 	"github.com/yitsushi/go-misskey/services/drive/files"
 	"github.com/yitsushi/go-misskey/services/notes"
 	"golang.org/x/exp/slices"
-	"golang.org/x/text/number"
 )
 
 type options struct {
