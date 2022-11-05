@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/everpcpc/pixiv"
-	"github.com/sirupsen/logrus"
+	// "github.com/sirupsen/logrus"
 	logger "github.com/sleroq/sloffy/logger"
 	"github.com/yitsushi/go-misskey"
 
@@ -19,6 +19,7 @@ import (
 	"github.com/yitsushi/go-misskey/services/drive/files"
 	"github.com/yitsushi/go-misskey/services/notes"
 	"golang.org/x/exp/slices"
+	"golang.org/x/text/number"
 )
 
 type options struct {
@@ -67,7 +68,7 @@ func initPixiv(opts options) (*pixiv.AppPixivAPI, uint64, error) {
 
 func initMisskey(opts options) (*misskey.Client, error) {
 	misskeyClient, err := misskey.NewClientWithOptions(misskey.WithSimpleConfig(opts.MisskeyInstance, opts.MisskeyToken))
-	misskeyClient.LogLevel(logrus.DebugLevel)
+	// misskeyClient.LogLevel(logrus.WarnLevel)
 
 	if err != nil {
 		return nil, fmt.Errorf("Creating Misskey client: %w", err)
@@ -98,12 +99,20 @@ func main() {
 		log.Fatalf("Initializing Misskey: %v", err)
 	}
 
-	ticker := time.NewTicker(time.Second * 20)
+	errorCounter := 0
+	ticker := time.NewTicker(time.Minute)
 	for ; true; <-ticker.C {
 		err := checkAndPost(pixivClient, pixivUID, misskeyClient, log)
 		if err != nil {
+			if errorCounter > 10 {
+				log.Fatalln("FATAL: Too many errors, last one:", err)
+			}
+
 			log.Printf("ERROR: %v", err)
+			errorCounter += 1
+			continue
 		}
+		errorCounter = 0
 	}
 }
 
@@ -202,7 +211,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 				urls = append(urls, illust.MetaSinglePage.OriginalImageURL)
 			}
 
-			noteText := fmt.Sprintf("[%s](https://www.pixiv.net/en/artworks/%s)", illust.Title, illustID)
+			noteText := fmt.Sprintf("[%s](https://www.pixiv.net/en/artworks/%s)\n#art #pixiv", illust.Title, illustID)
 			var uploadedFiles []string
 
 			httpClient := &http.Client{}
@@ -226,7 +235,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 			}
 
 			response, err := misskeyClient.Notes().Create(notes.CreateRequest{
-				Visibility: models.VisibilityFollowers,
+				Visibility: models.VisibilityPublic,
 				Text:       &noteText,
 				FileIDs:    uploadedFiles,
 			})
@@ -241,10 +250,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 		if err != nil {
 			return fmt.Errorf("saving bookmarks list: %w", err)
 		}
-	} else {
-		log.Println("Bookmarks are up to date")
 	}
-
 	return nil
 }
 
