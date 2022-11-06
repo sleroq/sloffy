@@ -11,8 +11,7 @@ import (
 	"time"
 
 	"github.com/everpcpc/pixiv"
-	// "github.com/sirupsen/logrus"
-	logger "github.com/sleroq/sloffy/logger"
+	logrus "github.com/sirupsen/logrus"
 	"github.com/yitsushi/go-misskey"
 
 	"github.com/yitsushi/go-misskey/models"
@@ -28,6 +27,8 @@ type options struct {
 	PixivAccessToken  string
 	PixivRefreshToken string
 }
+
+var log = logrus.New()
 
 func getEnv() (opts options, err error) {
 	opts.MisskeyToken = os.Getenv("MISSKEY_TOKEN")
@@ -77,10 +78,11 @@ func initMisskey(opts options) (*misskey.Client, error) {
 }
 
 func main() {
-	log, err := logger.New("sloffy.log")
-	if err != nil {
-		fmt.Println("Creating new Logger:", err)
-		os.Exit(1)
+	file, err := os.OpenFile("sloffy.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		log.Out = file
+	} else {
+		log.Info("Failed to log to file, using default stderr")
 	}
 
 	opts, err := getEnv()
@@ -101,13 +103,13 @@ func main() {
 	errorCounter := 0
 	ticker := time.NewTicker(time.Minute)
 	for ; true; <-ticker.C {
-		err := checkAndPost(pixivClient, pixivUID, misskeyClient, log)
+		err := checkAndPost(pixivClient, pixivUID, misskeyClient)
 		if err != nil {
 			if errorCounter > 10 {
-				log.Fatalln("FATAL: Too many errors, last one:", err)
+				log.Fatalln("Too many errors, last one:", err)
 			}
 
-			log.Printf("ERROR: %v", err)
+			log.Errorf("checkAndPost failed: %v", err)
 			errorCounter += 1
 			continue
 		}
@@ -166,7 +168,7 @@ func getBookmarks(pixivClient *pixiv.AppPixivAPI, uid uint64) ([]pixiv.Illust, e
 	return bookmarks, nil
 }
 
-func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient *misskey.Client, log *logger.Logger) error {
+func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient *misskey.Client) error {
 	oldBookmarks, err := getOldBookmarks()
 	if err != nil {
 		return fmt.Errorf("reading old bookmarks from file: %w", err)
@@ -185,13 +187,13 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 
 	var someNewBookmarks []pixiv.Illust
 	for index, illust := range newBookmarks {
-		fmt.Println("orig", illust.Images.Original)
-		fmt.Println("large", illust.Images.Large)
-		fmt.Println("med", illust.Images.Medium)
-		fmt.Println("Square", illust.Images.SquareMedium)
-		fmt.Println("MetaSingle", illust.MetaSinglePage.OriginalImageURL)
-		fmt.Println("MetaPages", len(illust.MetaPages))
-		fmt.Println("--------------")
+		// fmt.Println("orig", illust.Images.Original)
+		// fmt.Println("large", illust.Images.Large)
+		// fmt.Println("med", illust.Images.Medium)
+		// fmt.Println("Square", illust.Images.SquareMedium)
+		// fmt.Println("MetaSingle", illust.MetaSinglePage.OriginalImageURL)
+		// fmt.Println("MetaPages", len(illust.MetaPages))
+		// fmt.Println("--------------")
 		someNewBookmarks = append(someNewBookmarks, illust)
 		if index > 20 {
 			break
@@ -206,7 +208,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 	}
 
 	if len(actuallyNew) > 0 {
-		log.Println("Found", len(actuallyNew), "new bookmarks")
+		log.Debugln("Found", len(actuallyNew), "new bookmarks")
 	}
 
 	for _, illust := range actuallyNew {
@@ -215,10 +217,10 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 		var urls []string
 		if illust.MetaSinglePage.OriginalImageURL == "" {
 			for _, img := range illust.MetaPages {
-				urls = append(urls, img.Images.Medium)
+				urls = append(urls, img.Images.Large)
 			}
 		} else {
-			urls = append(urls, illust.Images.Medium)
+			urls = append(urls, illust.Images.Large)
 		}
 
 		noteText := fmt.Sprintf("[%s](https://www.pixiv.net/en/artworks/%s)\n#art #pixiv", illust.Title, illustID)
@@ -244,7 +246,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 			uploadedFiles = append(uploadedFiles, file.ID)
 
 			if index > 14 {
-				log.Println("WARN: Misskey attachments limt is reached ;c")
+				log.Warn("Misskey attachments limt is reached ;c")
 				break
 			}
 		}
@@ -258,7 +260,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 			return fmt.Errorf("Creating note: %s", err)
 		}
 
-		log.Println("note for", illustID, "created with id", response.CreatedNote.ID)
+		log.Debugln("note for", illustID, "created with id", response.CreatedNote.ID)
 	}
 
 	err = saveBookmarks(newBookmarks)
