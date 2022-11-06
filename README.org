@@ -1,8 +1,6 @@
 * Sloffy
 Simple [[https://misskey.io/][Misskey]] bot to automatically post images from pixiv
 
-This project is not ready yet, feel free to open issue or contact me via quetplace.xyz or telegram
-
 * Usage
 1. Clone repository
     #+begin_src bash
@@ -11,14 +9,23 @@ This project is not ready yet, feel free to open issue or contact me via quetpla
 
 2. [[https://gist.github.com/upbit/6edda27cb1644e94183291109b8a5fde][Get auth data for pixiv]]
 
-3. Set up the environment variables
+3. Get API token for your Misskey bot
+
+   You will need this permissions:
+   - Access your Drive files and folders
+   - Edit or delete your Drive files and folders
+   - Compose or delete notes
+
+3. Create folder in your Misskey drive and remember the id
+
+4. Set up the environment variables
    #+begin_src bash
    cp ./scripts/env.sh.example ./scripts/env.sh
 
    $EDITOR ./script/env.sh
    #+end_src
 
-4. Start
+5. Start
    #+begin_src bash
    scripts/run.sh
    #+end_src
