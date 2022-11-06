@@ -23,6 +23,7 @@ import (
 type options struct {
 	MisskeyToken    string
 	MisskeyInstance string
+	MisskeyFolderID string
 
 	PixivAccessToken  string
 	PixivRefreshToken string
@@ -38,6 +39,10 @@ func getEnv() (opts options, err error) {
 	opts.MisskeyInstance = os.Getenv("MISSKEY_INSTANCE")
 	if opts.MisskeyToken == "" {
 		return options{}, fmt.Errorf("MISSKEY_INSTANCE not provided")
+	}
+	opts.MisskeyFolderID = os.Getenv("MISSKEY_FOLDER_ID")
+	if opts.MisskeyFolderID == "" {
+		return options{}, fmt.Errorf("MISSKEY_FOLDER_ID not provided")
 	}
 
 	opts.PixivAccessToken = os.Getenv("PIXIV_ACCESS_TOKEN")
@@ -103,7 +108,7 @@ func main() {
 	errorCounter := 0
 	ticker := time.NewTicker(time.Minute)
 	for ; true; <-ticker.C {
-		err := checkAndPost(pixivClient, pixivUID, misskeyClient)
+		err := checkAndPost(pixivClient, pixivUID, misskeyClient, opts.MisskeyFolderID)
 		if err != nil {
 			if errorCounter > 10 {
 				log.Fatalln("Too many errors, last one:", err)
@@ -168,7 +173,31 @@ func getBookmarks(pixivClient *pixiv.AppPixivAPI, uid uint64) ([]pixiv.Illust, e
 	return bookmarks, nil
 }
 
-func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient *misskey.Client) error {
+func downloadFromPixiv(client *http.Client, url string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Referer", "https://app-api.pixiv.net/")
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("download failed: %s", resp.Status)
+	}
+
+	result, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading response body: %s", err)
+	}
+
+	return result, nil
+}
+
+func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient *misskey.Client, folderID string) error {
 	oldBookmarks, err := getOldBookmarks()
 	if err != nil {
 		return fmt.Errorf("reading old bookmarks from file: %w", err)
@@ -179,27 +208,26 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 		return fmt.Errorf("getting new bookmarks: %w", err)
 	}
 
+	// If this is first run ever
 	if len(oldBookmarks) == 0 {
 		for _, bookmark := range newBookmarks {
 			oldBookmarks = append(oldBookmarks, bookmark.ID)
 		}
 	}
 
+	// Using only first 20 bookmarks
+	// because if user removes some illustations from favorites
+	// some old bookmarks now can fit in the last 30 bookmarks
+	// but they aren't present in cached bookmarks.txt from last runs
 	var someNewBookmarks []pixiv.Illust
 	for index, illust := range newBookmarks {
-		// fmt.Println("orig", illust.Images.Original)
-		// fmt.Println("large", illust.Images.Large)
-		// fmt.Println("med", illust.Images.Medium)
-		// fmt.Println("Square", illust.Images.SquareMedium)
-		// fmt.Println("MetaSingle", illust.MetaSinglePage.OriginalImageURL)
-		// fmt.Println("MetaPages", len(illust.MetaPages))
-		// fmt.Println("--------------")
 		someNewBookmarks = append(someNewBookmarks, illust)
 		if index > 20 {
 			break
 		}
 	}
 
+	// Looking for new illustations
 	var actuallyNew []pixiv.Illust
 	for _, bookmark := range someNewBookmarks {
 		if !slices.Contains(oldBookmarks, bookmark.ID) {
@@ -234,9 +262,9 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 			}
 
 			file, err := misskeyClient.Drive().File().Create(files.CreateRequest{
-				FolderID:    "977okw2d1d", // FIXME
+				FolderID:    folderID,
 				Name:        filepath.Base(u),
-				IsSensitive: false, // FIXME: Get this from pixiv api
+				IsSensitive: illust.XRestrict == 0,
 				Content:     image,
 			})
 			if err != nil {
@@ -245,7 +273,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 
 			uploadedFiles = append(uploadedFiles, file.ID)
 
-			if index > 14 {
+			if index == 16 {
 				log.Warn("Misskey attachments limt is reached ;c")
 				break
 			}
@@ -269,28 +297,4 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 	}
 
 	return nil
-}
-
-func downloadFromPixiv(client *http.Client, url string) ([]byte, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Referer", "https://app-api.pixiv.net/")
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("download failed: %s", resp.Status)
-	}
-
-	result, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading response body: %s", err)
-	}
-
-	return result, nil
 }
