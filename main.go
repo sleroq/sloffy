@@ -264,7 +264,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 			file, err := misskeyClient.Drive().File().Create(files.CreateRequest{
 				FolderID:    folderID,
 				Name:        filepath.Base(u),
-				IsSensitive: illust.XRestrict == 0,
+				IsSensitive: illust.XRestrict != 0,
 				Content:     image,
 			})
 			if err != nil {
