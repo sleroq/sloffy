@@ -128,7 +128,7 @@ func getOldBookmarks() ([]uint64, error) {
 	data, err := os.ReadFile(bookmarksFile)
 	if err != nil {
 		if strings.Contains(err.Error(), "no such file or directory") {
-			data = []byte{}
+			return []uint64{}, nil
 		} else {
 			return nil, fmt.Errorf("reading old bookmarks from file: %w", err)
 		}
