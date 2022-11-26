@@ -1,0 +1,16 @@
+[Unit]
+Description=Sloffy bot
+
+[Service]
+Environment=MISSKEY_TOKEN="qwertyuiop123ASDF"
+Environment=MISSKEY_INSTANCE="https://quietplace.xyz"
+Environment=MISSKEY_FOLDER_ID="977okw2d1d"
+Environment=PIXIV_ACCESS_TOKEN="oeEfeOgWTvrYemMvsfary_shnjmJVEwA"
+Environment=PIXIV_REFRESH_TOKEN="5upbnNH4SK-kFm7cmz-eqLDfukYqTK4JcLnbnC8E95883pjvX"
+Type=simple
+WorkingDirectory=/home/filleron/projects/sloffy
+ExecStart=/home/filleron/projects/sloffy/sloffy
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
