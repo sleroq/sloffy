@@ -138,6 +138,9 @@ func getOldBookmarks() ([]uint64, error) {
 
 	var bookmarks []uint64
 	for _, id := range stringIDs {
+		if id == "" {
+			continue
+		}
 		parsedID, err := strconv.ParseUint(id, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("parsing id to uint \"%s\": %w", id, err)
