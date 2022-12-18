@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/everpcpc/pixiv"
-	logrus "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/yitsushi/go-misskey"
 
 	"github.com/yitsushi/go-misskey/models"
@@ -60,12 +60,12 @@ func getEnv() (opts options, err error) {
 func initPixiv(opts options) (*pixiv.AppPixivAPI, uint64, error) {
 	account, err := pixiv.LoadAuth(opts.PixivAccessToken, opts.PixivRefreshToken, time.Now().Add(time.Millisecond*3000))
 	if err != nil {
-		return nil, 0, fmt.Errorf("Loggin in Pixiv account: %w", err)
+		return nil, 0, fmt.Errorf("loggin in Pixiv account: %w", err)
 	}
 
 	pixivUID, err := strconv.ParseUint(account.ID, 10, 64)
 	if err != nil {
-		return nil, 0, fmt.Errorf("Could not convert account.ID to uint")
+		return nil, 0, fmt.Errorf("could not convert account.ID to uint")
 	}
 
 	return pixiv.NewApp(), pixivUID, nil
@@ -76,7 +76,7 @@ func initMisskey(opts options) (*misskey.Client, error) {
 	// misskeyClient.LogLevel(logrus.WarnLevel)
 
 	if err != nil {
-		return nil, fmt.Errorf("Creating Misskey client: %w", err)
+		return nil, fmt.Errorf("creating Misskey client: %w", err)
 	}
 
 	return misskeyClient, nil
@@ -288,7 +288,7 @@ func checkAndPost(pixivClient *pixiv.AppPixivAPI, pixivUID uint64, misskeyClient
 			FileIDs:    uploadedFiles,
 		})
 		if err != nil {
-			return fmt.Errorf("Creating note: %s", err)
+			return fmt.Errorf("creating note: %s", err)
 		}
 
 		log.Debugln("note for", illustID, "created with id", response.CreatedNote.ID)
