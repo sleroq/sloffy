@@ -1,7 +1,7 @@
 * Sloffy
 Simple [[https://misskey.io/][Misskey]] bot to automatically post images from pixiv
 
-![screenshot](https://i.ibb.co/yqK8Mhc/image.png)
+[[https://i.ibb.co/yqK8Mhc/image.png]]
 
 * Usage
 1. Clone repository
