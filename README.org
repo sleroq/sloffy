@@ -1,9 +1,11 @@
 * Sloffy
 Simple [[https://misskey.io/][Misskey]] bot to automatically post images from pixiv
 
+![screenshot](https://i.ibb.co/yqK8Mhc/image.png)
+
 * Usage
 1. Clone repository
-    #+begin_src bash
+    #+begin_src shell
     git clone https://github.com/sleroq/sloffy.git
     #+end_src
 
@@ -19,13 +21,13 @@ Simple [[https://misskey.io/][Misskey]] bot to automatically post images from pi
 3. Create folder in your Misskey drive and remember the id
 
 4. Set up the environment variables
-   #+begin_src bash
+   #+begin_src shell
    cp ./scripts/env.sh.example ./scripts/env.sh
 
    $EDITOR ./script/env.sh
    #+end_src
 
 5. Start
-   #+begin_src bash
+   #+begin_src shell
    scripts/run.sh
    #+end_src
